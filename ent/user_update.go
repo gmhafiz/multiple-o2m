@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 
+	"entgo.io/bug/ent/multiplemany"
 	"entgo.io/bug/ent/predicate"
 	"entgo.io/bug/ent/user"
 	"entgo.io/ent/dialect/sql"
@@ -27,28 +28,81 @@ func (uu *UserUpdate) Where(ps ...predicate.User) *UserUpdate {
 	return uu
 }
 
-// SetAge sets the "age" field.
-func (uu *UserUpdate) SetAge(i int) *UserUpdate {
-	uu.mutation.ResetAge()
-	uu.mutation.SetAge(i)
+// AddMultipleMany1IDs adds the "multiple_many_1" edge to the MultipleMany entity by IDs.
+func (uu *UserUpdate) AddMultipleMany1IDs(ids ...int) *UserUpdate {
+	uu.mutation.AddMultipleMany1IDs(ids...)
 	return uu
 }
 
-// AddAge adds i to the "age" field.
-func (uu *UserUpdate) AddAge(i int) *UserUpdate {
-	uu.mutation.AddAge(i)
+// AddMultipleMany1 adds the "multiple_many_1" edges to the MultipleMany entity.
+func (uu *UserUpdate) AddMultipleMany1(m ...*MultipleMany) *UserUpdate {
+	ids := make([]int, len(m))
+	for i := range m {
+		ids[i] = m[i].ID
+	}
+	return uu.AddMultipleMany1IDs(ids...)
+}
+
+// AddMultipleMany2IDs adds the "multiple_many_2" edge to the MultipleMany entity by IDs.
+func (uu *UserUpdate) AddMultipleMany2IDs(ids ...int) *UserUpdate {
+	uu.mutation.AddMultipleMany2IDs(ids...)
 	return uu
 }
 
-// SetName sets the "name" field.
-func (uu *UserUpdate) SetName(s string) *UserUpdate {
-	uu.mutation.SetName(s)
-	return uu
+// AddMultipleMany2 adds the "multiple_many_2" edges to the MultipleMany entity.
+func (uu *UserUpdate) AddMultipleMany2(m ...*MultipleMany) *UserUpdate {
+	ids := make([]int, len(m))
+	for i := range m {
+		ids[i] = m[i].ID
+	}
+	return uu.AddMultipleMany2IDs(ids...)
 }
 
 // Mutation returns the UserMutation object of the builder.
 func (uu *UserUpdate) Mutation() *UserMutation {
 	return uu.mutation
+}
+
+// ClearMultipleMany1 clears all "multiple_many_1" edges to the MultipleMany entity.
+func (uu *UserUpdate) ClearMultipleMany1() *UserUpdate {
+	uu.mutation.ClearMultipleMany1()
+	return uu
+}
+
+// RemoveMultipleMany1IDs removes the "multiple_many_1" edge to MultipleMany entities by IDs.
+func (uu *UserUpdate) RemoveMultipleMany1IDs(ids ...int) *UserUpdate {
+	uu.mutation.RemoveMultipleMany1IDs(ids...)
+	return uu
+}
+
+// RemoveMultipleMany1 removes "multiple_many_1" edges to MultipleMany entities.
+func (uu *UserUpdate) RemoveMultipleMany1(m ...*MultipleMany) *UserUpdate {
+	ids := make([]int, len(m))
+	for i := range m {
+		ids[i] = m[i].ID
+	}
+	return uu.RemoveMultipleMany1IDs(ids...)
+}
+
+// ClearMultipleMany2 clears all "multiple_many_2" edges to the MultipleMany entity.
+func (uu *UserUpdate) ClearMultipleMany2() *UserUpdate {
+	uu.mutation.ClearMultipleMany2()
+	return uu
+}
+
+// RemoveMultipleMany2IDs removes the "multiple_many_2" edge to MultipleMany entities by IDs.
+func (uu *UserUpdate) RemoveMultipleMany2IDs(ids ...int) *UserUpdate {
+	uu.mutation.RemoveMultipleMany2IDs(ids...)
+	return uu
+}
+
+// RemoveMultipleMany2 removes "multiple_many_2" edges to MultipleMany entities.
+func (uu *UserUpdate) RemoveMultipleMany2(m ...*MultipleMany) *UserUpdate {
+	ids := make([]int, len(m))
+	for i := range m {
+		ids[i] = m[i].ID
+	}
+	return uu.RemoveMultipleMany2IDs(ids...)
 }
 
 // Save executes the query and returns the number of nodes affected by the update operation.
@@ -123,26 +177,113 @@ func (uu *UserUpdate) sqlSave(ctx context.Context) (n int, err error) {
 			}
 		}
 	}
-	if value, ok := uu.mutation.Age(); ok {
-		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
-			Type:   field.TypeInt,
-			Value:  value,
-			Column: user.FieldAge,
-		})
+	if uu.mutation.MultipleMany1Cleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.MultipleMany1Table,
+			Columns: []string{user.MultipleMany1Column},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: &sqlgraph.FieldSpec{
+					Type:   field.TypeInt,
+					Column: multiplemany.FieldID,
+				},
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
 	}
-	if value, ok := uu.mutation.AddedAge(); ok {
-		_spec.Fields.Add = append(_spec.Fields.Add, &sqlgraph.FieldSpec{
-			Type:   field.TypeInt,
-			Value:  value,
-			Column: user.FieldAge,
-		})
+	if nodes := uu.mutation.RemovedMultipleMany1IDs(); len(nodes) > 0 && !uu.mutation.MultipleMany1Cleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.MultipleMany1Table,
+			Columns: []string{user.MultipleMany1Column},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: &sqlgraph.FieldSpec{
+					Type:   field.TypeInt,
+					Column: multiplemany.FieldID,
+				},
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
 	}
-	if value, ok := uu.mutation.Name(); ok {
-		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
-			Type:   field.TypeString,
-			Value:  value,
-			Column: user.FieldName,
-		})
+	if nodes := uu.mutation.MultipleMany1IDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.MultipleMany1Table,
+			Columns: []string{user.MultipleMany1Column},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: &sqlgraph.FieldSpec{
+					Type:   field.TypeInt,
+					Column: multiplemany.FieldID,
+				},
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if uu.mutation.MultipleMany2Cleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.MultipleMany2Table,
+			Columns: []string{user.MultipleMany2Column},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: &sqlgraph.FieldSpec{
+					Type:   field.TypeInt,
+					Column: multiplemany.FieldID,
+				},
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := uu.mutation.RemovedMultipleMany2IDs(); len(nodes) > 0 && !uu.mutation.MultipleMany2Cleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.MultipleMany2Table,
+			Columns: []string{user.MultipleMany2Column},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: &sqlgraph.FieldSpec{
+					Type:   field.TypeInt,
+					Column: multiplemany.FieldID,
+				},
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := uu.mutation.MultipleMany2IDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.MultipleMany2Table,
+			Columns: []string{user.MultipleMany2Column},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: &sqlgraph.FieldSpec{
+					Type:   field.TypeInt,
+					Column: multiplemany.FieldID,
+				},
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
 	if n, err = sqlgraph.UpdateNodes(ctx, uu.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
@@ -163,28 +304,81 @@ type UserUpdateOne struct {
 	mutation *UserMutation
 }
 
-// SetAge sets the "age" field.
-func (uuo *UserUpdateOne) SetAge(i int) *UserUpdateOne {
-	uuo.mutation.ResetAge()
-	uuo.mutation.SetAge(i)
+// AddMultipleMany1IDs adds the "multiple_many_1" edge to the MultipleMany entity by IDs.
+func (uuo *UserUpdateOne) AddMultipleMany1IDs(ids ...int) *UserUpdateOne {
+	uuo.mutation.AddMultipleMany1IDs(ids...)
 	return uuo
 }
 
-// AddAge adds i to the "age" field.
-func (uuo *UserUpdateOne) AddAge(i int) *UserUpdateOne {
-	uuo.mutation.AddAge(i)
+// AddMultipleMany1 adds the "multiple_many_1" edges to the MultipleMany entity.
+func (uuo *UserUpdateOne) AddMultipleMany1(m ...*MultipleMany) *UserUpdateOne {
+	ids := make([]int, len(m))
+	for i := range m {
+		ids[i] = m[i].ID
+	}
+	return uuo.AddMultipleMany1IDs(ids...)
+}
+
+// AddMultipleMany2IDs adds the "multiple_many_2" edge to the MultipleMany entity by IDs.
+func (uuo *UserUpdateOne) AddMultipleMany2IDs(ids ...int) *UserUpdateOne {
+	uuo.mutation.AddMultipleMany2IDs(ids...)
 	return uuo
 }
 
-// SetName sets the "name" field.
-func (uuo *UserUpdateOne) SetName(s string) *UserUpdateOne {
-	uuo.mutation.SetName(s)
-	return uuo
+// AddMultipleMany2 adds the "multiple_many_2" edges to the MultipleMany entity.
+func (uuo *UserUpdateOne) AddMultipleMany2(m ...*MultipleMany) *UserUpdateOne {
+	ids := make([]int, len(m))
+	for i := range m {
+		ids[i] = m[i].ID
+	}
+	return uuo.AddMultipleMany2IDs(ids...)
 }
 
 // Mutation returns the UserMutation object of the builder.
 func (uuo *UserUpdateOne) Mutation() *UserMutation {
 	return uuo.mutation
+}
+
+// ClearMultipleMany1 clears all "multiple_many_1" edges to the MultipleMany entity.
+func (uuo *UserUpdateOne) ClearMultipleMany1() *UserUpdateOne {
+	uuo.mutation.ClearMultipleMany1()
+	return uuo
+}
+
+// RemoveMultipleMany1IDs removes the "multiple_many_1" edge to MultipleMany entities by IDs.
+func (uuo *UserUpdateOne) RemoveMultipleMany1IDs(ids ...int) *UserUpdateOne {
+	uuo.mutation.RemoveMultipleMany1IDs(ids...)
+	return uuo
+}
+
+// RemoveMultipleMany1 removes "multiple_many_1" edges to MultipleMany entities.
+func (uuo *UserUpdateOne) RemoveMultipleMany1(m ...*MultipleMany) *UserUpdateOne {
+	ids := make([]int, len(m))
+	for i := range m {
+		ids[i] = m[i].ID
+	}
+	return uuo.RemoveMultipleMany1IDs(ids...)
+}
+
+// ClearMultipleMany2 clears all "multiple_many_2" edges to the MultipleMany entity.
+func (uuo *UserUpdateOne) ClearMultipleMany2() *UserUpdateOne {
+	uuo.mutation.ClearMultipleMany2()
+	return uuo
+}
+
+// RemoveMultipleMany2IDs removes the "multiple_many_2" edge to MultipleMany entities by IDs.
+func (uuo *UserUpdateOne) RemoveMultipleMany2IDs(ids ...int) *UserUpdateOne {
+	uuo.mutation.RemoveMultipleMany2IDs(ids...)
+	return uuo
+}
+
+// RemoveMultipleMany2 removes "multiple_many_2" edges to MultipleMany entities.
+func (uuo *UserUpdateOne) RemoveMultipleMany2(m ...*MultipleMany) *UserUpdateOne {
+	ids := make([]int, len(m))
+	for i := range m {
+		ids[i] = m[i].ID
+	}
+	return uuo.RemoveMultipleMany2IDs(ids...)
 }
 
 // Select allows selecting one or more fields (columns) of the returned entity.
@@ -283,26 +477,113 @@ func (uuo *UserUpdateOne) sqlSave(ctx context.Context) (_node *User, err error) 
 			}
 		}
 	}
-	if value, ok := uuo.mutation.Age(); ok {
-		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
-			Type:   field.TypeInt,
-			Value:  value,
-			Column: user.FieldAge,
-		})
+	if uuo.mutation.MultipleMany1Cleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.MultipleMany1Table,
+			Columns: []string{user.MultipleMany1Column},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: &sqlgraph.FieldSpec{
+					Type:   field.TypeInt,
+					Column: multiplemany.FieldID,
+				},
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
 	}
-	if value, ok := uuo.mutation.AddedAge(); ok {
-		_spec.Fields.Add = append(_spec.Fields.Add, &sqlgraph.FieldSpec{
-			Type:   field.TypeInt,
-			Value:  value,
-			Column: user.FieldAge,
-		})
+	if nodes := uuo.mutation.RemovedMultipleMany1IDs(); len(nodes) > 0 && !uuo.mutation.MultipleMany1Cleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.MultipleMany1Table,
+			Columns: []string{user.MultipleMany1Column},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: &sqlgraph.FieldSpec{
+					Type:   field.TypeInt,
+					Column: multiplemany.FieldID,
+				},
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
 	}
-	if value, ok := uuo.mutation.Name(); ok {
-		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
-			Type:   field.TypeString,
-			Value:  value,
-			Column: user.FieldName,
-		})
+	if nodes := uuo.mutation.MultipleMany1IDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.MultipleMany1Table,
+			Columns: []string{user.MultipleMany1Column},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: &sqlgraph.FieldSpec{
+					Type:   field.TypeInt,
+					Column: multiplemany.FieldID,
+				},
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if uuo.mutation.MultipleMany2Cleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.MultipleMany2Table,
+			Columns: []string{user.MultipleMany2Column},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: &sqlgraph.FieldSpec{
+					Type:   field.TypeInt,
+					Column: multiplemany.FieldID,
+				},
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := uuo.mutation.RemovedMultipleMany2IDs(); len(nodes) > 0 && !uuo.mutation.MultipleMany2Cleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.MultipleMany2Table,
+			Columns: []string{user.MultipleMany2Column},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: &sqlgraph.FieldSpec{
+					Type:   field.TypeInt,
+					Column: multiplemany.FieldID,
+				},
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := uuo.mutation.MultipleMany2IDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.MultipleMany2Table,
+			Columns: []string{user.MultipleMany2Column},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: &sqlgraph.FieldSpec{
+					Type:   field.TypeInt,
+					Column: multiplemany.FieldID,
+				},
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
 	_node = &User{config: uuo.config}
 	_spec.Assign = _node.assignValues

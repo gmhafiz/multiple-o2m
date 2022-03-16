@@ -12,13 +12,41 @@ import (
 
 // User is the model entity for the User schema.
 type User struct {
-	config `json:"-"`
+	config
 	// ID of the ent.
 	ID int `json:"id,omitempty"`
-	// Age holds the value of the "age" field.
-	Age int `json:"age,omitempty"`
-	// Name holds the value of the "name" field.
-	Name string `json:"name,omitempty"`
+	// Edges holds the relations/edges for other nodes in the graph.
+	// The values are being populated by the UserQuery when eager-loading is set.
+	Edges UserEdges `json:"edges"`
+}
+
+// UserEdges holds the relations/edges for other nodes in the graph.
+type UserEdges struct {
+	// MultipleMany1 holds the value of the multiple_many_1 edge.
+	MultipleMany1 []*MultipleMany `json:"multiple_many_1,omitempty"`
+	// MultipleMany2 holds the value of the multiple_many_2 edge.
+	MultipleMany2 []*MultipleMany `json:"multiple_many_2,omitempty"`
+	// loadedTypes holds the information for reporting if a
+	// type was loaded (or requested) in eager-loading or not.
+	loadedTypes [2]bool
+}
+
+// MultipleMany1OrErr returns the MultipleMany1 value or an error if the edge
+// was not loaded in eager-loading.
+func (e UserEdges) MultipleMany1OrErr() ([]*MultipleMany, error) {
+	if e.loadedTypes[0] {
+		return e.MultipleMany1, nil
+	}
+	return nil, &NotLoadedError{edge: "multiple_many_1"}
+}
+
+// MultipleMany2OrErr returns the MultipleMany2 value or an error if the edge
+// was not loaded in eager-loading.
+func (e UserEdges) MultipleMany2OrErr() ([]*MultipleMany, error) {
+	if e.loadedTypes[1] {
+		return e.MultipleMany2, nil
+	}
+	return nil, &NotLoadedError{edge: "multiple_many_2"}
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -26,10 +54,8 @@ func (*User) scanValues(columns []string) ([]interface{}, error) {
 	values := make([]interface{}, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case user.FieldID, user.FieldAge:
+		case user.FieldID:
 			values[i] = new(sql.NullInt64)
-		case user.FieldName:
-			values[i] = new(sql.NullString)
 		default:
 			return nil, fmt.Errorf("unexpected column %q for type User", columns[i])
 		}
@@ -51,21 +77,19 @@ func (u *User) assignValues(columns []string, values []interface{}) error {
 				return fmt.Errorf("unexpected type %T for field id", value)
 			}
 			u.ID = int(value.Int64)
-		case user.FieldAge:
-			if value, ok := values[i].(*sql.NullInt64); !ok {
-				return fmt.Errorf("unexpected type %T for field age", values[i])
-			} else if value.Valid {
-				u.Age = int(value.Int64)
-			}
-		case user.FieldName:
-			if value, ok := values[i].(*sql.NullString); !ok {
-				return fmt.Errorf("unexpected type %T for field name", values[i])
-			} else if value.Valid {
-				u.Name = value.String
-			}
 		}
 	}
 	return nil
+}
+
+// QueryMultipleMany1 queries the "multiple_many_1" edge of the User entity.
+func (u *User) QueryMultipleMany1() *MultipleManyQuery {
+	return (&UserClient{config: u.config}).QueryMultipleMany1(u)
+}
+
+// QueryMultipleMany2 queries the "multiple_many_2" edge of the User entity.
+func (u *User) QueryMultipleMany2() *MultipleManyQuery {
+	return (&UserClient{config: u.config}).QueryMultipleMany2(u)
 }
 
 // Update returns a builder for updating this User.
@@ -91,10 +115,6 @@ func (u *User) String() string {
 	var builder strings.Builder
 	builder.WriteString("User(")
 	builder.WriteString(fmt.Sprintf("id=%v", u.ID))
-	builder.WriteString(", age=")
-	builder.WriteString(fmt.Sprintf("%v", u.Age))
-	builder.WriteString(", name=")
-	builder.WriteString(u.Name)
 	builder.WriteByte(')')
 	return builder.String()
 }

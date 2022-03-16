@@ -6,5 +6,8 @@ import (
 	"entgo.io/ent/dialect/sql"
 )
 
+// MultipleMany is the predicate function for multiplemany builders.
+type MultipleMany func(*sql.Selector)
+
 // User is the predicate function for user builders.
 type User func(*sql.Selector)

@@ -7,19 +7,31 @@ const (
 	Label = "user"
 	// FieldID holds the string denoting the id field in the database.
 	FieldID = "id"
-	// FieldAge holds the string denoting the age field in the database.
-	FieldAge = "age"
-	// FieldName holds the string denoting the name field in the database.
-	FieldName = "name"
+	// EdgeMultipleMany1 holds the string denoting the multiple_many_1 edge name in mutations.
+	EdgeMultipleMany1 = "multiple_many_1"
+	// EdgeMultipleMany2 holds the string denoting the multiple_many_2 edge name in mutations.
+	EdgeMultipleMany2 = "multiple_many_2"
 	// Table holds the table name of the user in the database.
 	Table = "users"
+	// MultipleMany1Table is the table that holds the multiple_many_1 relation/edge.
+	MultipleMany1Table = "multiple_manies"
+	// MultipleMany1InverseTable is the table name for the MultipleMany entity.
+	// It exists in this package in order to avoid circular dependency with the "multiplemany" package.
+	MultipleMany1InverseTable = "multiple_manies"
+	// MultipleMany1Column is the table column denoting the multiple_many_1 relation/edge.
+	MultipleMany1Column = "user_1"
+	// MultipleMany2Table is the table that holds the multiple_many_2 relation/edge.
+	MultipleMany2Table = "multiple_manies"
+	// MultipleMany2InverseTable is the table name for the MultipleMany entity.
+	// It exists in this package in order to avoid circular dependency with the "multiplemany" package.
+	MultipleMany2InverseTable = "multiple_manies"
+	// MultipleMany2Column is the table column denoting the multiple_many_2 relation/edge.
+	MultipleMany2Column = "user_2"
 )
 
 // Columns holds all SQL columns for user fields.
 var Columns = []string{
 	FieldID,
-	FieldAge,
-	FieldName,
 }
 
 // ValidColumn reports if the column name is valid (part of the table columns).

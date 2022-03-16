@@ -9,10 +9,12 @@ import (
 
 	"entgo.io/bug/ent/migrate"
 
+	"entgo.io/bug/ent/multiplemany"
 	"entgo.io/bug/ent/user"
 
 	"entgo.io/ent/dialect"
 	"entgo.io/ent/dialect/sql"
+	"entgo.io/ent/dialect/sql/sqlgraph"
 )
 
 // Client is the client that holds all ent builders.
@@ -20,6 +22,8 @@ type Client struct {
 	config
 	// Schema is the client for creating, migrating and dropping schema.
 	Schema *migrate.Schema
+	// MultipleMany is the client for interacting with the MultipleMany builders.
+	MultipleMany *MultipleManyClient
 	// User is the client for interacting with the User builders.
 	User *UserClient
 }
@@ -35,6 +39,7 @@ func NewClient(opts ...Option) *Client {
 
 func (c *Client) init() {
 	c.Schema = migrate.NewSchema(c.driver)
+	c.MultipleMany = NewMultipleManyClient(c.config)
 	c.User = NewUserClient(c.config)
 }
 
@@ -67,9 +72,10 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 	cfg := c.config
 	cfg.driver = tx
 	return &Tx{
-		ctx:    ctx,
-		config: cfg,
-		User:   NewUserClient(cfg),
+		ctx:          ctx,
+		config:       cfg,
+		MultipleMany: NewMultipleManyClient(cfg),
+		User:         NewUserClient(cfg),
 	}, nil
 }
 
@@ -87,15 +93,17 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 	cfg := c.config
 	cfg.driver = &txDriver{tx: tx, drv: c.driver}
 	return &Tx{
-		config: cfg,
-		User:   NewUserClient(cfg),
+		ctx:          ctx,
+		config:       cfg,
+		MultipleMany: NewMultipleManyClient(cfg),
+		User:         NewUserClient(cfg),
 	}, nil
 }
 
 // Debug returns a new debug-client. It's used to get verbose logging on specific operations.
 //
 //	client.Debug().
-//		User.
+//		MultipleMany.
 //		Query().
 //		Count(ctx)
 //
@@ -118,7 +126,130 @@ func (c *Client) Close() error {
 // Use adds the mutation hooks to all the entity clients.
 // In order to add hooks to a specific client, call: `client.Node.Use(...)`.
 func (c *Client) Use(hooks ...Hook) {
+	c.MultipleMany.Use(hooks...)
 	c.User.Use(hooks...)
+}
+
+// MultipleManyClient is a client for the MultipleMany schema.
+type MultipleManyClient struct {
+	config
+}
+
+// NewMultipleManyClient returns a client for the MultipleMany from the given config.
+func NewMultipleManyClient(c config) *MultipleManyClient {
+	return &MultipleManyClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `multiplemany.Hooks(f(g(h())))`.
+func (c *MultipleManyClient) Use(hooks ...Hook) {
+	c.hooks.MultipleMany = append(c.hooks.MultipleMany, hooks...)
+}
+
+// Create returns a create builder for MultipleMany.
+func (c *MultipleManyClient) Create() *MultipleManyCreate {
+	mutation := newMultipleManyMutation(c.config, OpCreate)
+	return &MultipleManyCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of MultipleMany entities.
+func (c *MultipleManyClient) CreateBulk(builders ...*MultipleManyCreate) *MultipleManyCreateBulk {
+	return &MultipleManyCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for MultipleMany.
+func (c *MultipleManyClient) Update() *MultipleManyUpdate {
+	mutation := newMultipleManyMutation(c.config, OpUpdate)
+	return &MultipleManyUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *MultipleManyClient) UpdateOne(mm *MultipleMany) *MultipleManyUpdateOne {
+	mutation := newMultipleManyMutation(c.config, OpUpdateOne, withMultipleMany(mm))
+	return &MultipleManyUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *MultipleManyClient) UpdateOneID(id int) *MultipleManyUpdateOne {
+	mutation := newMultipleManyMutation(c.config, OpUpdateOne, withMultipleManyID(id))
+	return &MultipleManyUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for MultipleMany.
+func (c *MultipleManyClient) Delete() *MultipleManyDelete {
+	mutation := newMultipleManyMutation(c.config, OpDelete)
+	return &MultipleManyDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a delete builder for the given entity.
+func (c *MultipleManyClient) DeleteOne(mm *MultipleMany) *MultipleManyDeleteOne {
+	return c.DeleteOneID(mm.ID)
+}
+
+// DeleteOneID returns a delete builder for the given id.
+func (c *MultipleManyClient) DeleteOneID(id int) *MultipleManyDeleteOne {
+	builder := c.Delete().Where(multiplemany.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &MultipleManyDeleteOne{builder}
+}
+
+// Query returns a query builder for MultipleMany.
+func (c *MultipleManyClient) Query() *MultipleManyQuery {
+	return &MultipleManyQuery{
+		config: c.config,
+	}
+}
+
+// Get returns a MultipleMany entity by its id.
+func (c *MultipleManyClient) Get(ctx context.Context, id int) (*MultipleMany, error) {
+	return c.Query().Where(multiplemany.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *MultipleManyClient) GetX(ctx context.Context, id int) *MultipleMany {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// QueryUser1 queries the user1 edge of a MultipleMany.
+func (c *MultipleManyClient) QueryUser1(mm *MultipleMany) *UserQuery {
+	query := &UserQuery{config: c.config}
+	query.path = func(ctx context.Context) (fromV *sql.Selector, _ error) {
+		id := mm.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(multiplemany.Table, multiplemany.FieldID, id),
+			sqlgraph.To(user.Table, user.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, multiplemany.User1Table, multiplemany.User1Column),
+		)
+		fromV = sqlgraph.Neighbors(mm.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryUser2 queries the user2 edge of a MultipleMany.
+func (c *MultipleManyClient) QueryUser2(mm *MultipleMany) *UserQuery {
+	query := &UserQuery{config: c.config}
+	query.path = func(ctx context.Context) (fromV *sql.Selector, _ error) {
+		id := mm.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(multiplemany.Table, multiplemany.FieldID, id),
+			sqlgraph.To(user.Table, user.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, multiplemany.User2Table, multiplemany.User2Column),
+		)
+		fromV = sqlgraph.Neighbors(mm.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// Hooks returns the client hooks.
+func (c *MultipleManyClient) Hooks() []Hook {
+	return c.hooks.MultipleMany
 }
 
 // UserClient is a client for the User schema.
@@ -204,6 +335,38 @@ func (c *UserClient) GetX(ctx context.Context, id int) *User {
 		panic(err)
 	}
 	return obj
+}
+
+// QueryMultipleMany1 queries the multiple_many_1 edge of a User.
+func (c *UserClient) QueryMultipleMany1(u *User) *MultipleManyQuery {
+	query := &MultipleManyQuery{config: c.config}
+	query.path = func(ctx context.Context) (fromV *sql.Selector, _ error) {
+		id := u.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(user.Table, user.FieldID, id),
+			sqlgraph.To(multiplemany.Table, multiplemany.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, user.MultipleMany1Table, user.MultipleMany1Column),
+		)
+		fromV = sqlgraph.Neighbors(u.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryMultipleMany2 queries the multiple_many_2 edge of a User.
+func (c *UserClient) QueryMultipleMany2(u *User) *MultipleManyQuery {
+	query := &MultipleManyQuery{config: c.config}
+	query.path = func(ctx context.Context) (fromV *sql.Selector, _ error) {
+		id := u.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(user.Table, user.FieldID, id),
+			sqlgraph.To(multiplemany.Table, multiplemany.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, user.MultipleMany2Table, user.MultipleMany2Column),
+		)
+		fromV = sqlgraph.Neighbors(u.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
 }
 
 // Hooks returns the client hooks.

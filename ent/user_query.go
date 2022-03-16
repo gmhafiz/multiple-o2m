@@ -4,10 +4,12 @@ package ent
 
 import (
 	"context"
+	"database/sql/driver"
 	"errors"
 	"fmt"
 	"math"
 
+	"entgo.io/bug/ent/multiplemany"
 	"entgo.io/bug/ent/predicate"
 	"entgo.io/bug/ent/user"
 	"entgo.io/ent/dialect/sql"
@@ -24,6 +26,9 @@ type UserQuery struct {
 	order      []OrderFunc
 	fields     []string
 	predicates []predicate.User
+	// eager-loading edges.
+	withMultipleMany1 *MultipleManyQuery
+	withMultipleMany2 *MultipleManyQuery
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
@@ -58,6 +63,50 @@ func (uq *UserQuery) Unique(unique bool) *UserQuery {
 func (uq *UserQuery) Order(o ...OrderFunc) *UserQuery {
 	uq.order = append(uq.order, o...)
 	return uq
+}
+
+// QueryMultipleMany1 chains the current query on the "multiple_many_1" edge.
+func (uq *UserQuery) QueryMultipleMany1() *MultipleManyQuery {
+	query := &MultipleManyQuery{config: uq.config}
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := uq.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := uq.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(user.Table, user.FieldID, selector),
+			sqlgraph.To(multiplemany.Table, multiplemany.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, user.MultipleMany1Table, user.MultipleMany1Column),
+		)
+		fromU = sqlgraph.SetNeighbors(uq.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
+// QueryMultipleMany2 chains the current query on the "multiple_many_2" edge.
+func (uq *UserQuery) QueryMultipleMany2() *MultipleManyQuery {
+	query := &MultipleManyQuery{config: uq.config}
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := uq.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := uq.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(user.Table, user.FieldID, selector),
+			sqlgraph.To(multiplemany.Table, multiplemany.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, user.MultipleMany2Table, user.MultipleMany2Column),
+		)
+		fromU = sqlgraph.SetNeighbors(uq.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
 }
 
 // First returns the first User entity from the query.
@@ -106,7 +155,7 @@ func (uq *UserQuery) FirstIDX(ctx context.Context) int {
 }
 
 // Only returns a single User entity found by the query, ensuring it only returns one.
-// Returns a *NotSingularError when exactly one User entity is not found.
+// Returns a *NotSingularError when more than one User entity is found.
 // Returns a *NotFoundError when no User entities are found.
 func (uq *UserQuery) Only(ctx context.Context) (*User, error) {
 	nodes, err := uq.Limit(2).All(ctx)
@@ -133,7 +182,7 @@ func (uq *UserQuery) OnlyX(ctx context.Context) *User {
 }
 
 // OnlyID is like Only, but returns the only User ID in the query.
-// Returns a *NotSingularError when exactly one User ID is not found.
+// Returns a *NotSingularError when more than one User ID is found.
 // Returns a *NotFoundError when no entities are found.
 func (uq *UserQuery) OnlyID(ctx context.Context) (id int, err error) {
 	var ids []int
@@ -236,32 +285,44 @@ func (uq *UserQuery) Clone() *UserQuery {
 		return nil
 	}
 	return &UserQuery{
-		config:     uq.config,
-		limit:      uq.limit,
-		offset:     uq.offset,
-		order:      append([]OrderFunc{}, uq.order...),
-		predicates: append([]predicate.User{}, uq.predicates...),
+		config:            uq.config,
+		limit:             uq.limit,
+		offset:            uq.offset,
+		order:             append([]OrderFunc{}, uq.order...),
+		predicates:        append([]predicate.User{}, uq.predicates...),
+		withMultipleMany1: uq.withMultipleMany1.Clone(),
+		withMultipleMany2: uq.withMultipleMany2.Clone(),
 		// clone intermediate query.
-		sql:  uq.sql.Clone(),
-		path: uq.path,
+		sql:    uq.sql.Clone(),
+		path:   uq.path,
+		unique: uq.unique,
 	}
+}
+
+// WithMultipleMany1 tells the query-builder to eager-load the nodes that are connected to
+// the "multiple_many_1" edge. The optional arguments are used to configure the query builder of the edge.
+func (uq *UserQuery) WithMultipleMany1(opts ...func(*MultipleManyQuery)) *UserQuery {
+	query := &MultipleManyQuery{config: uq.config}
+	for _, opt := range opts {
+		opt(query)
+	}
+	uq.withMultipleMany1 = query
+	return uq
+}
+
+// WithMultipleMany2 tells the query-builder to eager-load the nodes that are connected to
+// the "multiple_many_2" edge. The optional arguments are used to configure the query builder of the edge.
+func (uq *UserQuery) WithMultipleMany2(opts ...func(*MultipleManyQuery)) *UserQuery {
+	query := &MultipleManyQuery{config: uq.config}
+	for _, opt := range opts {
+		opt(query)
+	}
+	uq.withMultipleMany2 = query
+	return uq
 }
 
 // GroupBy is used to group vertices by one or more fields/columns.
 // It is often used with aggregate functions, like: count, max, mean, min, sum.
-//
-// Example:
-//
-//	var v []struct {
-//		Age int `json:"age,omitempty"`
-//		Count int `json:"count,omitempty"`
-//	}
-//
-//	client.User.Query().
-//		GroupBy(user.FieldAge).
-//		Aggregate(ent.Count()).
-//		Scan(ctx, &v)
-//
 func (uq *UserQuery) GroupBy(field string, fields ...string) *UserGroupBy {
 	group := &UserGroupBy{config: uq.config}
 	group.fields = append([]string{field}, fields...)
@@ -276,17 +337,6 @@ func (uq *UserQuery) GroupBy(field string, fields ...string) *UserGroupBy {
 
 // Select allows the selection one or more fields/columns for the given query,
 // instead of selecting all fields in the entity.
-//
-// Example:
-//
-//	var v []struct {
-//		Age int `json:"age,omitempty"`
-//	}
-//
-//	client.User.Query().
-//		Select(user.FieldAge).
-//		Scan(ctx, &v)
-//
 func (uq *UserQuery) Select(fields ...string) *UserSelect {
 	uq.fields = append(uq.fields, fields...)
 	return &UserSelect{UserQuery: uq}
@@ -310,8 +360,12 @@ func (uq *UserQuery) prepareQuery(ctx context.Context) error {
 
 func (uq *UserQuery) sqlAll(ctx context.Context) ([]*User, error) {
 	var (
-		nodes = []*User{}
-		_spec = uq.querySpec()
+		nodes       = []*User{}
+		_spec       = uq.querySpec()
+		loadedTypes = [2]bool{
+			uq.withMultipleMany1 != nil,
+			uq.withMultipleMany2 != nil,
+		}
 	)
 	_spec.ScanValues = func(columns []string) ([]interface{}, error) {
 		node := &User{config: uq.config}
@@ -323,6 +377,7 @@ func (uq *UserQuery) sqlAll(ctx context.Context) ([]*User, error) {
 			return fmt.Errorf("ent: Assign called without calling ScanValues")
 		}
 		node := nodes[len(nodes)-1]
+		node.Edges.loadedTypes = loadedTypes
 		return node.assignValues(columns, values)
 	}
 	if err := sqlgraph.QueryNodes(ctx, uq.driver, _spec); err != nil {
@@ -331,6 +386,57 @@ func (uq *UserQuery) sqlAll(ctx context.Context) ([]*User, error) {
 	if len(nodes) == 0 {
 		return nodes, nil
 	}
+
+	if query := uq.withMultipleMany1; query != nil {
+		fks := make([]driver.Value, 0, len(nodes))
+		nodeids := make(map[int]*User)
+		for i := range nodes {
+			fks = append(fks, nodes[i].ID)
+			nodeids[nodes[i].ID] = nodes[i]
+			nodes[i].Edges.MultipleMany1 = []*MultipleMany{}
+		}
+		query.Where(predicate.MultipleMany(func(s *sql.Selector) {
+			s.Where(sql.InValues(user.MultipleMany1Column, fks...))
+		}))
+		neighbors, err := query.All(ctx)
+		if err != nil {
+			return nil, err
+		}
+		for _, n := range neighbors {
+			fk := n.User1
+			node, ok := nodeids[fk]
+			if !ok {
+				return nil, fmt.Errorf(`unexpected foreign-key "user_1" returned %v for node %v`, fk, n.ID)
+			}
+			node.Edges.MultipleMany1 = append(node.Edges.MultipleMany1, n)
+		}
+	}
+
+	if query := uq.withMultipleMany2; query != nil {
+		fks := make([]driver.Value, 0, len(nodes))
+		nodeids := make(map[int]*User)
+		for i := range nodes {
+			fks = append(fks, nodes[i].ID)
+			nodeids[nodes[i].ID] = nodes[i]
+			nodes[i].Edges.MultipleMany2 = []*MultipleMany{}
+		}
+		query.Where(predicate.MultipleMany(func(s *sql.Selector) {
+			s.Where(sql.InValues(user.MultipleMany2Column, fks...))
+		}))
+		neighbors, err := query.All(ctx)
+		if err != nil {
+			return nil, err
+		}
+		for _, n := range neighbors {
+			fk := n.User2
+			node, ok := nodeids[fk]
+			if !ok {
+				return nil, fmt.Errorf(`unexpected foreign-key "user_2" returned %v for node %v`, fk, n.ID)
+			}
+			node.Edges.MultipleMany2 = append(node.Edges.MultipleMany2, n)
+		}
+	}
+
 	return nodes, nil
 }
 

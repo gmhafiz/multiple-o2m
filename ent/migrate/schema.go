@@ -8,11 +8,35 @@ import (
 )
 
 var (
+	// MultipleManiesColumns holds the columns for the "multiple_manies" table.
+	MultipleManiesColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "user_1", Type: field.TypeInt},
+		{Name: "user_2", Type: field.TypeInt},
+	}
+	// MultipleManiesTable holds the schema information for the "multiple_manies" table.
+	MultipleManiesTable = &schema.Table{
+		Name:       "multiple_manies",
+		Columns:    MultipleManiesColumns,
+		PrimaryKey: []*schema.Column{MultipleManiesColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "multiple_manies_users_multiple_many_1",
+				Columns:    []*schema.Column{MultipleManiesColumns[1]},
+				RefColumns: []*schema.Column{UsersColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+			{
+				Symbol:     "multiple_manies_users_multiple_many_2",
+				Columns:    []*schema.Column{MultipleManiesColumns[2]},
+				RefColumns: []*schema.Column{UsersColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+		},
+	}
 	// UsersColumns holds the columns for the "users" table.
 	UsersColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
-		{Name: "age", Type: field.TypeInt},
-		{Name: "name", Type: field.TypeString},
 	}
 	// UsersTable holds the schema information for the "users" table.
 	UsersTable = &schema.Table{
@@ -22,9 +46,12 @@ var (
 	}
 	// Tables holds all the tables in the schema.
 	Tables = []*schema.Table{
+		MultipleManiesTable,
 		UsersTable,
 	}
 )
 
 func init() {
+	MultipleManiesTable.ForeignKeys[0].RefTable = UsersTable
+	MultipleManiesTable.ForeignKeys[1].RefTable = UsersTable
 }
